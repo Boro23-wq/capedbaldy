@@ -2,18 +2,17 @@ import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormBuilder, FormControl } from '@angular/forms';
 import { AuthenticationService } from '../_services';
-import { MovieRes, MovieTypes } from './types/MovieTypes';
+import { MovieTypes } from './types/MovieTypes';
 import { ModalService } from '../_modal';
 import { defer, merge, Observable, of } from 'rxjs';
 import {
   debounceTime,
   distinctUntilChanged,
   map,
+  tap,
   share,
   switchMap,
 } from 'rxjs/operators';
-import { SearchResult } from './search-result';
-import { SearchService } from './search.service';
 
 @Component({ templateUrl: 'home.component.html' })
 export class HomeComponent implements OnInit {
@@ -21,13 +20,20 @@ export class HomeComponent implements OnInit {
   allMovies: MovieTypes[];
   pageNumber: number = 1;
   selectedMovie: MovieTypes;
+  searchedMovie: MovieTypes[];
+
+  //search
+  public searchControl: FormControl;
+  public searchResults$: Observable<MovieTypes[]>;
+  public areMinimumCharactersTyped$: Observable<boolean>;
+  public ifMinimumCharactersNotTyped$: Observable<boolean>;
+  public areNoResultsFound$: Observable<any>;
 
   constructor(
     private authenticationService: AuthenticationService,
     private router: Router,
     private modalService: ModalService,
     //search
-    private searchService: SearchService,
     private formBuilder: FormBuilder
   ) {
     // redirect to home if already logged in
@@ -41,24 +47,27 @@ export class HomeComponent implements OnInit {
     this.searchControl = this.formBuilder.control('');
 
     this.areMinimumCharactersTyped$ = this.searchControl.valueChanges.pipe(
-      map((searchString) => searchString.length >= 3)
+      map((searchString) => searchString.length >= 1)
+    );
+
+    this.ifMinimumCharactersNotTyped$ = this.searchControl.valueChanges.pipe(
+      map((searchString) => searchString.length < 3)
     );
 
     const searchString$ = merge(
       defer(() => of(this.searchControl.value)),
       this.searchControl.valueChanges
-    ).pipe(debounceTime(1000), distinctUntilChanged());
+    ).pipe(debounceTime(250), distinctUntilChanged());
 
     this.searchResults$ = searchString$.pipe(
-      switchMap((searchString: string) =>
-        this.searchService.search(searchString)
-      ),
+      switchMap((searchString: string) => this.search(searchString)),
       share()
     );
 
     this.areNoResultsFound$ = this.searchResults$.pipe(
       map((results) => results.length === 0)
     );
+
     //end search
 
     const token = JSON.parse(localStorage.getItem('token'));
@@ -68,7 +77,6 @@ export class HomeComponent implements OnInit {
       .subscribe((res) => {
         this.movies = res;
         this.allMovies = this.movies.results;
-        console.log('Fetched');
       });
   }
 
@@ -82,19 +90,6 @@ export class HomeComponent implements OnInit {
   }
 
   //Modal
-  openModal(id: string, movieUUID: string) {
-    this.modalService.open(id);
-    const filteredMovie = this.allMovies.find(
-      (movie) => movie.uuid === movieUUID
-    );
-    this.selectedMovie = filteredMovie;
-  }
-
-  closeModal(id: string) {
-    this.modalService.close(id);
-  }
-
-  //Model
   openModal(id: string, movieUUID: string) {
     this.modalService.open(id);
     const filteredMovie = this.allMovies.find(
@@ -161,6 +156,25 @@ export class HomeComponent implements OnInit {
   public nextBtnDisabled() {
     if (this.movies.next === null) {
       return true;
+    }
+  }
+
+  public search(searchString: string): Observable<MovieTypes[]> {
+    if (searchString.length >= 3) {
+      return of(this.allMovies).pipe(
+        map((movies) =>
+          movies.filter(({ title }) =>
+            title.toLowerCase().includes(searchString.toLowerCase())
+          )
+        ),
+        tap((movie) => {
+          this.allMovies = movie;
+        })
+      );
+    }
+
+    if (searchString.length < 3) {
+      this.onFetchMoviesHandle();
     }
   }
 }

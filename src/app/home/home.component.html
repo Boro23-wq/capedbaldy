@@ -2,25 +2,18 @@
 <div style="display: flex; justify-content: space-between;">
     <button mat-raised-button color="primary" (click)="onFetchMoviesHandle()" class="btn btn-secondary">Fetch
         Movies</button>
+
     <!--search component-->
     <input type="text" [formControl]="searchControl" />
-
     <div>
-        <ng-container *ngIf="(areMinimumCharactersTyped$ | async); else lessThanMinimumCharactersTyped">
+        <ng-container
+            *ngIf="(areMinimumCharactersTyped$ || ifMinimumCharactersNotTyped$ | async); else lessThanMinimumCharactersTyped">
             <ng-container *ngIf="(areNoResultsFound$ | async); else results">
-                No Results found.
             </ng-container>
-            <ng-template #results>
-                Got results
-                <ul>
-                    <li *ngFor="let result of searchResults$ | async">
-                        {{ result | json }}
-                    </li>
-                </ul>
+            <ng-template>
             </ng-template>
         </ng-container>
         <ng-template #lessThanMinimumCharactersTyped>
-            Enter minimum 3 characters to start searching.
         </ng-template>
     </div>
     <!--End search component-->
@@ -41,12 +34,12 @@
 
 <hr />
 
-<!-- Movie Card 
+
 <div class="row" style="display: flex; justify-content: space-evenly;">
-    <div *ngFor="let movie of allMovies;" class="card" style="width: 20rem;">
+    <div #results *ngFor="let movie of allMovies;" class="card" style="width: 20rem;">
         <div class="card-header bg-transparent">
             <h5 class="card-title" style="font-weight: 500; font-size: x-large;">
-                {{movie.title}}
+                {{ movie.title }}
             </h5>
             <span class="badge badge-secondary">{{movie.genres ? movie.genres : 'General'}}</span>
         </div>
