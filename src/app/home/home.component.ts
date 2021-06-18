@@ -1,33 +1,26 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
-import { FormBuilder, FormControl } from "@angular/forms";
+import { FormBuilder, FormControl } from '@angular/forms';
 import { AuthenticationService } from '../_services';
 import { MovieRes, MovieTypes } from './types/MovieTypes';
 import { ModalService } from '../_modal';
-import { defer, merge, Observable, of } from "rxjs";
+import { defer, merge, Observable, of } from 'rxjs';
 import {
   debounceTime,
   distinctUntilChanged,
   map,
   share,
-  switchMap
-} from "rxjs/operators";
-import { SearchResult } from "./search-result";
-import { SearchService } from "./search.service";
+  switchMap,
+} from 'rxjs/operators';
+import { SearchResult } from './search-result';
+import { SearchService } from './search.service';
 
 @Component({ templateUrl: 'home.component.html' })
-
-
 export class HomeComponent implements OnInit {
   movies: any;
   allMovies: MovieTypes[];
   pageNumber: number = 1;
   selectedMovie: MovieTypes;
-  //search
-  public searchControl: FormControl;
-  public searchResults$: Observable<SearchResult[]>;
-  public areMinimumCharactersTyped$: Observable<boolean>;
-  public areNoResultsFound$: Observable<boolean>;
 
   constructor(
     private authenticationService: AuthenticationService,
@@ -45,19 +38,16 @@ export class HomeComponent implements OnInit {
 
   ngOnInit() {
     //search
-    this.searchControl = this.formBuilder.control("");
+    this.searchControl = this.formBuilder.control('');
 
     this.areMinimumCharactersTyped$ = this.searchControl.valueChanges.pipe(
-      map(searchString => searchString.length >= 3)
+      map((searchString) => searchString.length >= 3)
     );
 
     const searchString$ = merge(
       defer(() => of(this.searchControl.value)),
       this.searchControl.valueChanges
-    ).pipe(
-      debounceTime(1000),
-      distinctUntilChanged()
-    );
+    ).pipe(debounceTime(1000), distinctUntilChanged());
 
     this.searchResults$ = searchString$.pipe(
       switchMap((searchString: string) =>
@@ -67,7 +57,7 @@ export class HomeComponent implements OnInit {
     );
 
     this.areNoResultsFound$ = this.searchResults$.pipe(
-      map(results => results.length === 0)
+      map((results) => results.length === 0)
     );
     //end search
 
@@ -89,10 +79,22 @@ export class HomeComponent implements OnInit {
       this.movies = res;
       this.allMovies = this.movies.results;
     });
-
   }
 
   //Modal
+  openModal(id: string, movieUUID: string) {
+    this.modalService.open(id);
+    const filteredMovie = this.allMovies.find(
+      (movie) => movie.uuid === movieUUID
+    );
+    this.selectedMovie = filteredMovie;
+  }
+
+  closeModal(id: string) {
+    this.modalService.close(id);
+  }
+
+  //Model
   openModal(id: string, movieUUID: string) {
     this.modalService.open(id);
     const filteredMovie = this.allMovies.find(
